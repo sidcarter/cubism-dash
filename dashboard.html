@@ -1,0 +1,168 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="../../favicon.ico">
+
+    <title>Cubism Dashboard</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom styles for this template -->
+    <link href="style.css" rel="stylesheet">
+
+  </head>
+
+  <body>
+
+    <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+          </button>
+          <a class="navbar-brand" href="#">Cubism Dashboard</a>
+        </div>
+        <div class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+            <li class="active"><a href="#">Overview</a></li>
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+                <li><a href="#"><div id="update-time">Last updated at NEVER</div></a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <script src="lib/jquery.min.js"></script>
+    <script src="lib/bootstrap.min.js"></script>
+    <script src="lib/d3.v2.js"></script>
+    <script src="lib/cubism.v1.js"></script>
+
+    <script>
+
+    var context = cubism.context()
+        .serverDelay(30 * 1000) // allow 30 seconds of collection lag
+        .step(1 * 60 * 1000) // 1 minute grain
+        .size(1024);  // 1024 minutes 
+
+    var graphite = context.graphite("http://graphite.mydomainname.com");
+
+    var dashboard = {
+      "title":  "Dashboard Title",
+      "description": "This dashboard uses a tiny json object to populate the graphs",
+      "dcs":   [ "dc1", "dc2", "dc3" ],
+      "roles": [ "database", "load-balancer", "app-server" ],
+      "hosts": [ "*" ],
+      "stats": [ "cpu.cpu0.idle" ]
+    }
+
+
+    // create a div container in the page body
+    var container = d3.selectAll("body").append("div").attr("class", "container")
+
+    // Append a header with the title and description
+    var heading = container.append("div")
+    heading.append("h1").text( dashboard["title"] )
+    heading.append("p").attr("class", "lead").text( dashboard["description"] )
+
+    container.append("div").attr("id", "dashboard")
+
+    var graphiteMetrics = [];  // accumulator
+    dashboard["dcs"].forEach( function( dc ) {
+      dashboard["roles"].forEach( function( role ) {
+        dashboard["hosts"].forEach( function( host ) {
+          dashboard["stats"].forEach( function( stat ) {
+
+            // Build a graphite query with each of the iterators
+            var graphiteQuery = [ dc, role, host, stat ].join(".")
+
+            // Pass the query into our graphite context
+            graphite.find(graphiteQuery, function(error, results) {
+
+              // If the query has results, let's build some charts 
+              if (results.length > 0) {
+
+                // Select the dashboard div
+                var panel = d3.select("#dashboard")
+                              .append("div")
+                                .attr("class", "panel panel-default")
+
+                // Append a heading with the role name
+                var siteRole = [ dc, role ].join(".")
+                panel.append("div")
+                  .attr("class", "panel-heading")
+                  .append("h3")
+                    .attr("class", "panel-title")
+                    .text(siteRole)
+
+                // Create a body for the query panel
+                var panelBody = panel.append("div")
+                              .attr("class", "panel-body")
+
+                // Create a container for the graphs
+                var graphs = panelBody.append("div").attr("id", "graphs")
+
+                // Add a timeline to the top of the panel
+                graphs.append("div")
+                  .attr("class", "axis")
+                  .call(context.axis().orient("top"));
+
+                console.log( "Rendering graphs for " + siteRole )
+
+                // Sort the results and map them to a graph
+                var metrics = results.sort().map(function(result) {
+                  var hostname = result.split(".")[2]
+                  //console.log(graphite.metric(result).valueAt(0))
+                  var graphite_metric =  graphite.metric(result)
+                                  .multiply(-1)
+                                  .add(50)  // TODO(JM) - parameterize this
+                                  .alias(hostname)
+
+                  return graphite_metric
+                });
+
+                // For each graphite metric, append a horizon chart
+                graphs.selectAll(".horizon")
+                  .data(metrics)
+                  .enter().append("div")
+                    .attr("class", "horizon")
+                    .call(context.horizon()
+                      .height(30)
+                      .colors(["#abd9e9", "#e0f3f8", "#fee090", "#fdae61"])
+                    );
+
+                // draw a ruler on top of the graphs
+                graphs.append("div")
+                  .attr("class", "rule")
+                  .call(context.rule());
+
+              }
+
+            })
+          })
+        })
+      })
+    })
+    
+    // Update the time in the upper right when this thing updates
+    context.on("change", function(start, stop) {
+        d3.select("#update-time").text("Last updated at " + stop + ".");
+      });
+
+
+    // Move the value to the ruler's position on focus
+    context.on("focus", function(i) {
+        d3.selectAll(".value").style("right", i == null ? null : context.size() - i + "px");
+      });
+
+    </script>
+  </body>
+</html>
+
