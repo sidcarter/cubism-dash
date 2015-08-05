@@ -9,10 +9,13 @@
     <meta name="author" content="">
     <link rel="icon" href="../../favicon.ico">
 
-    <title>Cubism Dashboard</title>
+    <title>Metrics Dashboard</title>
 
     <!-- Bootstrap core CSS -->
     <link href="bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap theme CSS -->
+    <link href="bootstrap-theme.min.css" rel="stylesheet">
 
     <!-- Custom styles for this template -->
     <link href="style.css" rel="stylesheet">
@@ -27,7 +30,7 @@
           <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
             <span class="sr-only">Toggle navigation</span>
           </button>
-          <a class="navbar-brand" href="#">Cubism Dashboard</a>
+          <a class="navbar-brand" href="#">Metrics Dashboard</a>
         </div>
         <div class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
@@ -55,12 +58,12 @@
     var graphite = context.graphite("http://graphite.mydomainname.com");
 
     var dashboard = {
-      "title":  "Dashboard Title",
-      "description": "This dashboard uses a tiny json object to populate the graphs",
-      "dcs":   [ "dc1", "dc2", "dc3" ],
-      "roles": [ "database", "load-balancer", "app-server" ],
+      "title":  "Metrics Dash",
+      "description": "This dashboard uses graphite to populate the graphs",
+      "dcs":   [ "stats" ],
+      "roles": [ "gauges.servers" ],
       "hosts": [ "*" ],
-      "stats": [ "cpu.cpu0.idle" ]
+      "stats": [ "cpu.cpu0.idle", "memory.MemFree", "iostat.*.iops" ]
     }
 
 
@@ -75,6 +78,7 @@
     container.append("div").attr("id", "dashboard")
 
     var graphiteMetrics = [];  // accumulator
+    
     dashboard["dcs"].forEach( function( dc ) {
       dashboard["roles"].forEach( function( role ) {
         dashboard["hosts"].forEach( function( host ) {
@@ -118,12 +122,17 @@
 
                 // Sort the results and map them to a graph
                 var metrics = results.sort().map(function(result) {
-                  var hostname = result.split(".")[2]
+                  // console.log(result)
+                  var metricPoint = "";
+                  var hostname = result.split(".")[3]
+                    if ((result.split(".")[6]) != undefined) {
+                        metricPoint = "." + result.split(".")[5]
+                    }
                   //console.log(graphite.metric(result).valueAt(0))
                   var graphite_metric =  graphite.metric(result)
                                   .multiply(-1)
                                   .add(50)  // TODO(JM) - parameterize this
-                                  .alias(hostname)
+                                  .alias(hostname + metricPoint)
 
                   return graphite_metric
                 });
