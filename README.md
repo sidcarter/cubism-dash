@@ -1,3 +1,8 @@
+Original
+========
+
+The original repo is [here](https://github.com/jefffm/cubism-dash). I've made some modifications to make it work with the metrics pushed via statsd into graphite.
+
 cubism-dash
 ===========
 
@@ -5,7 +10,7 @@ A cubism wrapper for displaying Graphite data, using bootstrap.
 
 Plug in your graphite URL, edit the JSON object with your graphite metrics, and off you go--you'll have a pretty autorefreshing set of horizon charts grouped by datacenter and role. 
 
-Currently this requires specific Graphite metric namespacing and is mostly suited for looking at CPU idle values. It should be easy to modify for other uses.
+Currently this requires specific Graphite metric namespacing. It should be easy to modify for other uses.
 
 Sample
 ------
